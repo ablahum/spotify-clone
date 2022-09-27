@@ -1,25 +1,57 @@
-import logo from './logo.svg';
-import './App.css';
+import { useEffect } from 'react'
+import { getTokenFromUrl } from './config'
+import SpotifyWebApi from 'spotify-web-api-js'
+import { useDataLayerValue } from './app/dataLayer'
+
+import { Login, Player } from './pages'
+
+const spotify = new SpotifyWebApi()
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+  const [{ user, token }, dispatch] = useDataLayerValue()
+
+  useEffect(() => {
+    const hash = getTokenFromUrl()
+    window.location.hash = ''
+    const _token = hash.access_token
+
+    if (_token) {
+      dispatch({
+        type: 'SET_TOKEN',
+        token: _token,
+      })
+
+      spotify.setAccessToken(_token)
+      ;(async () => {
+        const user = await spotify.getMe()
+
+        dispatch({
+          type: 'SET_USER',
+          user,
+        })
+      })()
+      ;(async () => {
+        const playlists = await spotify.getUserPlaylists()
+
+        console.log(playlists)
+        dispatch({
+          type: 'SET_PLAYLISTS',
+          playlists,
+        })
+      })()
+      ;(async () => {
+        const playlist = await spotify.getPlaylist('37i9dQZEVXcSZQVhysfpxB')
+
+        console.log(playlist)
+        dispatch({
+          type: 'SET_DISCOVER_WEEKLY',
+          discover_weekly: playlist,
+        })
+      })()
+    }
+  }, [])
+
+  return <div className='app'>{token ? <Player spotify={spotify} /> : <Login />}</div>
 }
 
-export default App;
+export default App
